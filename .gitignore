@@ -1,0 +1,7 @@
+# Rust
+/target
+
+# Prod
+*.db
+output/
+.env
