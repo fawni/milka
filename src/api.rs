@@ -22,18 +22,18 @@ pub struct VideoAuthor {
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct ApiResponse {
+pub struct VideoResponse {
     pub aweme_list: Vec<Aweme>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Aweme {
     pub author: VideoAuthor,
-    pub video: ApiVideo,
+    pub video: Video,
 }
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct ApiVideo {
+pub struct Video {
     pub play_addr: PlayAddr,
 }
 

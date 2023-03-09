@@ -1,76 +1,50 @@
 use std::sync::Arc;
 
-use rusqlite::Connection;
-use tokio::sync::Mutex;
+use sqlx::{Pool, Sqlite, SqlitePool};
 
 pub type Database = Arc<DatabaseState>;
 
-#[derive(Debug)]
 pub struct DatabaseState {
-    conn: Mutex<Connection>,
+    pool: Pool<Sqlite>,
 }
 
 impl DatabaseState {
-    pub fn new() -> Result<Self, Box<dyn std::error::Error>> {
-        let conn = Mutex::new(Connection::open("data.db")?);
-        Ok(Self { conn })
+    pub async fn new() -> Result<Self, Box<dyn std::error::Error>> {
+        let pool = SqlitePool::connect(&std::env::var("DATABASE_URL")?).await?;
+        Ok(Self { pool })
     }
 
-    pub async fn update_schema(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let conn = self.conn.lock().await;
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS favorites (
-                    id TEXT PRIMARY KEY UNIQUE,
-                    downloaded INTEGER NOT NULL
-                )",
-            (),
-        )?;
+    pub async fn set(&self, id: String, status: u8) -> Result<(), Box<dyn std::error::Error>> {
+        let status = status.to_string();
+        sqlx::query!("INSERT INTO favorites (id, status) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET status = excluded.status", id, status)
+            .execute(&self.pool)
+            .await?;
 
         Ok(())
     }
 
-    pub async fn set(&self, key: &String, val: u8) -> Result<(), Box<dyn std::error::Error>> {
-        let conn = self.conn.lock().await;
-        let mut key_set = conn.prepare_cached("INSERT INTO favorites (id, downloaded) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET downloaded = excluded.downloaded")?;
-        key_set.execute([key, &val.to_string()])?;
-        Ok(())
+    pub async fn get_status(&self, id: &String) -> Result<i64, Box<dyn std::error::Error>> {
+        let rec = sqlx::query!("SELECT status FROM favorites WHERE id = ?", id)
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(rec.status)
     }
 
-    pub async fn get(&self, key: &String) -> Option<u8> {
-        let conn = self.conn.lock().await;
-        let stmt = conn.prepare("SELECT downloaded FROM favorites WHERE id = ?");
-        if let Ok(mut key_get) = stmt {
-            key_get
-                .query_row([key], |r| {
-                    let val: u8 = r.get(0)?;
-                    Ok(val)
-                })
-                .ok()
-        } else {
-            None
-        }
-    }
+    pub async fn get_new_favorites(&self) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+        let favorites = sqlx::query!("SELECT id FROM favorites WHERE status = 0")
+            .fetch_all(&self.pool)
+            .await?
+            .into_iter()
+            .map(|r| r.id)
+            .collect::<Vec<String>>();
 
-    pub async fn get_favorites(&self) -> Result<Option<Vec<String>>, Box<dyn std::error::Error>> {
-        let conn = self.conn.lock().await;
-        let stmt = conn.prepare("SELECT id FROM favorites WHERE downloaded = 0");
-        let mut favorites: Vec<String> = Vec::new();
-        if let Ok(mut rows) = stmt {
-            let ids = rows.query_map([], |r| r.get::<_, u8>(0)).unwrap();
-            for id in ids {
-                favorites.push(id.unwrap().to_string());
-            }
-
-            Ok(Some(favorites))
-        } else {
-            Ok(None)
-        }
+        Ok(favorites)
     }
 }
 
 pub async fn open() -> Result<Database, Box<dyn std::error::Error>> {
-    let result = Arc::new(DatabaseState::new()?);
-    result.update_schema().await?;
+    let result = Arc::new(DatabaseState::new().await?);
 
     Ok(result)
 }
