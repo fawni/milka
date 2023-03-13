@@ -14,7 +14,7 @@ impl DatabaseState {
         Ok(Self { pool })
     }
 
-    pub async fn set(&self, id: String, status: u8) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn set(&self, id: &String, status: u8) -> Result<(), Box<dyn std::error::Error>> {
         let status = status.to_string();
         sqlx::query!("INSERT INTO favorites (id, status) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET status = excluded.status", id, status)
             .execute(&self.pool)

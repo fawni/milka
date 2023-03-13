@@ -15,29 +15,29 @@ pub struct Favorite {
     pub id: String,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug)]
 pub struct VideoAuthor {
     #[serde(rename = "unique_id")]
     pub username: String,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug)]
 pub struct VideoResponse {
     pub aweme_list: Vec<Aweme>,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug)]
 pub struct Aweme {
     pub author: VideoAuthor,
     pub video: Video,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug)]
 pub struct Video {
     pub play_addr: PlayAddr,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Debug)]
 pub struct PlayAddr {
     pub url_list: Vec<String>,
 }

@@ -11,15 +11,17 @@ mod log;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv()?;
-    fs::create_dir_all("output").await?;
     let database = db::open().await?;
 
     info!("Fetching favorites...");
     let client = reqwest::Client::new();
     let sec_uid = std::env::var("SEC_UID")?;
     let cookie = std::env::var("COOKIE")?;
-    let mut cursor = "0".to_owned();
+
+    let mut cursor = String::from("0");
     let mut page_counter = 1_u32;
+
+    fs::create_dir_all("output").await?;
 
     'outer: loop {
         let url = format!("https://www.tiktok.com/api/favorite/item_list/?aid=1988&count=30&cursor={cursor}&secUid={sec_uid}");
@@ -44,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if database.get_status(&id).await.is_ok() {
                 break 'outer;
             }
-            database.set(id, 0).await?;
+            database.set(&id, 0).await?;
         }
         info!("Fetched favorites page: {page_counter}",);
         if !res.has_more {
@@ -62,8 +64,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Found {} favorites!", ids.len().bold());
     info!("Starting downloads...");
 
-    for (i, id) in ids.clone().into_iter().enumerate() {
-        if database.get_status(&id).await? == 1 {
+    for (i, id) in ids.iter().enumerate() {
+        if database.get_status(id).await? == 1 {
             continue;
         };
 
@@ -83,7 +85,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-        let aweme = res.aweme_list[0].clone();
+        let aweme = &res.aweme_list[0];
 
         let Some(vid_url) = aweme.video.play_addr.url_list.get(0) else {
             err!("Error      {} ({})", id.bold(), "deleted".red());
@@ -96,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             database.set(id, 2).await?;
             continue;
         }
-        let author = aweme.author.username;
+        let author = &aweme.author.username;
 
         let res = match client.get(vid_url).send().await {
             Ok(res) => {
