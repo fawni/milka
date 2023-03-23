@@ -1,3 +1,5 @@
+use miette::Context;
+use miette::IntoDiagnostic;
 use owo_colors::OwoColorize;
 use tokio::{fs, io::AsyncWriteExt};
 
@@ -9,19 +11,23 @@ mod db;
 mod log;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    dotenvy::dotenv()?;
+async fn main() -> miette::Result<()> {
+    dotenvy::dotenv().into_diagnostic()?;
     let database = db::open().await?;
 
     info!("Fetching favorites...");
     let client = reqwest::Client::new();
-    let sec_uid = std::env::var("SEC_UID")?;
-    let cookie = std::env::var("COOKIE")?;
+    let sec_uid = std::env::var("SEC_UID")
+        .into_diagnostic()
+        .wrap_err("SEC_UID")?;
+    let cookie = std::env::var("COOKIE")
+        .into_diagnostic()
+        .wrap_err("COOKIE")?;
 
     let mut cursor = String::from("0");
     let mut page_counter = 1_u32;
 
-    fs::create_dir_all("output").await?;
+    fs::create_dir_all("output").await.into_diagnostic()?;
 
     'outer: loop {
         let url = format!("https://www.tiktok.com/api/favorite/item_list/?aid=1988&count=30&cursor={cursor}&secUid={sec_uid}");
@@ -29,7 +35,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .get(url)
             .header("cookie", &cookie)
             .send()
-            .await?
+            .await
+            .into_diagnostic()?
             .json::<FavoritesResponse>()
             .await;
 
@@ -115,8 +122,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-        let mut file = fs::File::create(format!("output/{id} - {author}.mp4")).await?;
-        file.write_all(&res).await?;
+        let mut file = fs::File::create(format!("output/{id} - {author}.mp4"))
+            .await
+            .into_diagnostic()?;
+        file.write_all(&res).await.into_diagnostic()?;
 
         info!("Downloaded {} ({}/{})", id.bold(), i + 1, ids.len());
         database.set(id, 1).await?;

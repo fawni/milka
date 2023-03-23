@@ -7,6 +7,7 @@ edition = "2021"
 [dependencies]
 dotenvy = "0.15.6"
 futures-util = "0.3.26"
+miette = { version = "5.6.0", features = ["fancy"] }
 owo-colors = "3.5.0"
 reqwest = { version = "0.11.14", features = ["json", "stream"] }
 serde = { version = "1.0.153", features = ["derive"] }
