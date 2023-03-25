@@ -1,7 +1,7 @@
 use miette::Context;
 use miette::IntoDiagnostic;
 use owo_colors::OwoColorize;
-use tokio::{fs, io::AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
 
 use crate::api::FavoritesResponse;
 use crate::api::VideoResponse;
@@ -27,7 +27,9 @@ async fn main() -> miette::Result<()> {
     let mut cursor = String::from("0");
     let mut page_counter = 1_u32;
 
-    fs::create_dir_all("output").await.into_diagnostic()?;
+    fs_err::tokio::create_dir_all("output")
+        .await
+        .into_diagnostic()?;
 
     'outer: loop {
         let url = format!("https://www.tiktok.com/api/favorite/item_list/?aid=1988&count=30&cursor={cursor}&secUid={sec_uid}");
@@ -122,7 +124,7 @@ async fn main() -> miette::Result<()> {
             }
         };
 
-        let mut file = fs::File::create(format!("output/{id} - {author}.mp4"))
+        let mut file = fs_err::tokio::File::create(format!("output/{id} - {author}.mp4"))
             .await
             .into_diagnostic()?;
         file.write_all(&res).await.into_diagnostic()?;

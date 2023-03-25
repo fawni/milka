@@ -6,6 +6,7 @@ edition = "2021"
 
 [dependencies]
 dotenvy = "0.15.6"
+fs-err = { version = "2.9.0", features = ["tokio"] }
 futures-util = "0.3.26"
 miette = { version = "5.6.0", features = ["fancy"] }
 owo-colors = "3.5.0"
