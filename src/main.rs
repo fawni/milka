@@ -1,21 +1,18 @@
-use miette::Context;
-use miette::IntoDiagnostic;
+use miette::{Context, IntoDiagnostic};
 use owo_colors::OwoColorize;
 use tokio::io::AsyncWriteExt;
 
-use crate::api::FavoritesResponse;
-use crate::api::VideoResponse;
+use crate::api::{FavoritesResponse, VideoResponse};
 
 mod api;
 mod db;
-mod log;
 
 #[tokio::main]
 async fn main() -> miette::Result<()> {
     dotenvy::dotenv().into_diagnostic()?;
     let database = db::open().await?;
 
-    info!("Fetching favorites...");
+    twink::info!("Fetching favorites...");
     let client = reqwest::Client::new();
     let sec_uid = std::env::var("SEC_UID")
         .into_diagnostic()
@@ -45,7 +42,7 @@ async fn main() -> miette::Result<()> {
         let res = match res {
             Ok(res) => res,
             Err(e) => {
-                err!("{e:?}");
+                twink::err!("{e:?}");
                 continue;
             }
         };
@@ -57,7 +54,7 @@ async fn main() -> miette::Result<()> {
             }
             database.set(&id, 0).await?;
         }
-        info!("Fetched favorites page: {page_counter}",);
+        twink::info!("Fetched favorites page: {page_counter}",);
         if !res.has_more {
             break;
         }
@@ -67,11 +64,11 @@ async fn main() -> miette::Result<()> {
 
     let ids = database.get_new_favorites().await?;
     if ids.is_empty() {
-        warn!("No new favorites found! Exiting...");
+        twink::warn!("No new favorites found! Exiting...");
         return Ok(());
     }
-    info!("Found {} favorites!", ids.len().bold());
-    info!("Starting downloads...");
+    twink::info!("Found {} favorites!", ids.len().bold());
+    twink::info!("Starting downloads...");
 
     for (i, id) in ids.iter().enumerate() {
         if database.get_status(id).await? == 1 {
@@ -82,14 +79,14 @@ async fn main() -> miette::Result<()> {
         let res = match client.get(url).send().await {
             Ok(res) => {
                 let Ok(res) = res.json::<VideoResponse>().await else {
-                    err!("Error      {} ({})", id.bold(), "???".red());
+                    twink::err!("Error      {} ({})", id.bold(), "???".red());
                     continue;
                 };
 
                 res
             }
             Err(e) => {
-                err!("{id}: {e:?}");
+                twink::err!("{id}: {e:?}");
                 continue;
             }
         };
@@ -97,13 +94,13 @@ async fn main() -> miette::Result<()> {
         let aweme = &res.aweme_list[0];
 
         let Some(vid_url) = aweme.video.play_addr.url_list.get(0) else {
-            err!("Error      {} ({})", id.bold(), "deleted".red());
+            twink::err!("Error      {} ({})", id.bold(), "deleted".red());
             database.set(id, 8).await?;
             continue;
         };
 
         if vid_url.ends_with(".mp3") {
-            warn!("Skipped    {} ({})", id.bold(), "slideshow".yellow());
+            twink::warn!("Skipped    {} ({})", id.bold(), "slideshow".yellow());
             database.set(id, 2).await?;
             continue;
         }
@@ -112,14 +109,14 @@ async fn main() -> miette::Result<()> {
         let res = match client.get(vid_url).send().await {
             Ok(res) => {
                 let Ok(res) = res.bytes().await else {
-                    err!("Error      {} ({})", id.bold(), "???".red());
+                    twink::err!("Error      {} ({})", id.bold(), "???".red());
                     continue;
                 };
 
                 res
             }
             Err(e) => {
-                err!("{id}: {e:?}");
+                twink::err!("{id}: {e:?}");
                 continue;
             }
         };
@@ -129,9 +126,9 @@ async fn main() -> miette::Result<()> {
             .into_diagnostic()?;
         file.write_all(&res).await.into_diagnostic()?;
 
-        info!("Downloaded {} ({}/{})", id.bold(), i + 1, ids.len());
+        twink::info!("Downloaded {} ({}/{})", id.bold(), i + 1, ids.len());
         database.set(id, 1).await?;
     }
 
-    Ok(info!("Done!"))
+    Ok(twink::info!("Done!"))
 }
