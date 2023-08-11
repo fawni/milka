@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO favorites (id, status) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET status = excluded.status",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "6887f782b46aff92d203c73d942b8d1bcb73f6b7945e735009e5bb91980f1ea6"
+}

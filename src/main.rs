@@ -1,5 +1,4 @@
 use miette::{Context, IntoDiagnostic};
-use owo_colors::OwoColorize;
 use tokio::io::AsyncWriteExt;
 
 use crate::api::{FavoritesResponse, VideoResponse};
@@ -12,7 +11,7 @@ async fn main() -> miette::Result<()> {
     dotenvy::dotenv().into_diagnostic()?;
     let database = db::open().await?;
 
-    twink::info!("Fetching favorites...");
+    twink::mrrr!("Fetching favorites...");
     let client = reqwest::Client::new();
     let sec_uid = std::env::var("SEC_UID")
         .into_diagnostic()
@@ -42,7 +41,7 @@ async fn main() -> miette::Result<()> {
         let res = match res {
             Ok(res) => res,
             Err(e) => {
-                twink::err!("{e:?}");
+                twink::hiss!("<b><red>error</>: {:?}", e);
                 continue;
             }
         };
@@ -54,7 +53,7 @@ async fn main() -> miette::Result<()> {
             }
             database.set(&id, 0).await?;
         }
-        twink::info!("Fetched favorites page: {page_counter}",);
+        twink::purr!("Fetched favorites page: {}", page_counter);
         if !res.has_more {
             break;
         }
@@ -64,11 +63,11 @@ async fn main() -> miette::Result<()> {
 
     let ids = database.get_new_favorites().await?;
     if ids.is_empty() {
-        twink::warn!("No new favorites found! Exiting...");
+        twink::mrrr!("No new favorites found! Exiting...");
         return Ok(());
     }
-    twink::info!("Found {} favorites!", ids.len().bold());
-    twink::info!("Starting downloads...");
+    twink::mrrr!("Found <b>{}</> favorites!", ids.len());
+    twink::mrrr!("Starting downloads...");
 
     for (i, id) in ids.iter().enumerate() {
         if database.get_status(id).await? == 1 {
@@ -79,14 +78,14 @@ async fn main() -> miette::Result<()> {
         let res = match client.get(url).send().await {
             Ok(res) => {
                 let Ok(res) = res.json::<VideoResponse>().await else {
-                    twink::err!("Error      {} ({})", id.bold(), "???".red());
+                    twink::hiss!("Error      <b>{}</> (<red>???</>)", id);
                     continue;
                 };
 
                 res
             }
             Err(e) => {
-                twink::err!("{id}: {e:?}");
+                twink::hiss!("{}: {:?}", id, e);
                 continue;
             }
         };
@@ -94,13 +93,13 @@ async fn main() -> miette::Result<()> {
         let aweme = &res.aweme_list[0];
 
         let Some(vid_url) = aweme.video.play_addr.url_list.get(0) else {
-            twink::err!("Error      {} ({})", id.bold(), "deleted".red());
+            twink::hiss!("Error      <b>{}</> (<red>deleted</>)", id);
             database.set(id, 8).await?;
             continue;
         };
 
         if vid_url.ends_with(".mp3") {
-            twink::warn!("Skipped    {} ({})", id.bold(), "slideshow".yellow());
+            twink::mrrr!("Skipped    <b>{}</> (<yellow>slideshow</>)", id);
             database.set(id, 2).await?;
             continue;
         }
@@ -109,14 +108,14 @@ async fn main() -> miette::Result<()> {
         let res = match client.get(vid_url).send().await {
             Ok(res) => {
                 let Ok(res) = res.bytes().await else {
-                    twink::err!("Error      {} ({})", id.bold(), "???".red());
+                    twink::hiss!("Error      <b>{}</> (<red>???</>)", id);
                     continue;
                 };
 
                 res
             }
             Err(e) => {
-                twink::err!("{id}: {e:?}");
+                twink::hiss!("{}: {:?}", id, e);
                 continue;
             }
         };
@@ -126,9 +125,9 @@ async fn main() -> miette::Result<()> {
             .into_diagnostic()?;
         file.write_all(&res).await.into_diagnostic()?;
 
-        twink::info!("Downloaded {} ({}/{})", id.bold(), i + 1, ids.len());
+        twink::purr!("Downloaded <b>{}</> ({}/{})", id, i + 1, ids.len());
         database.set(id, 1).await?;
     }
 
-    Ok(twink::info!("Done!"))
+    Ok(twink::purr!("Done!"))
 }

@@ -5,16 +5,15 @@ authors = ["fawn <fawn@envs.net>"]
 edition = "2021"
 
 [dependencies]
+tokio = { version = "1.30.0", features = ["rt-multi-thread", "macros", "fs"] }
+
+sqlx = { version = "0.7.1", features = ["runtime-tokio-native-tls", "sqlite"] }
+reqwest = { version = "0.11.18", features = ["json", "stream"] }
+serde = { version = "1.0.183", features = ["derive"] }
+
+twink = { version = "1.0.0", features = ["12-hour"] }
+miette = { version = "5.10.0", features = ["fancy"] }
+
 dotenvy = "0.15.7"
 fs-err = { version = "2.9.0", features = ["tokio"] }
 futures-util = "0.3.28"
-miette = { version = "5.6.0", features = ["fancy"] }
-owo-colors = "3.5.0"
-twink = "0.1.0"
-reqwest = { version = "0.11.18", features = ["json", "stream"] }
-serde = { version = "1.0.163", features = ["derive"] }
-sqlx = { version = "0.6.3", features = ["runtime-tokio-native-tls", "sqlite"] }
-
-[dependencies.tokio]
-version = "1.28.2"
-features = ["rt-multi-thread", "macros", "fs"]
